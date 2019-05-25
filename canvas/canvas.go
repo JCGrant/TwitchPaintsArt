@@ -1,53 +1,54 @@
 package canvas
 
 import (
-	"fmt"
-	"runtime"
+	"time"
 
-	"github.com/go-gl/gl/v2.1/gl"
-	"github.com/go-gl/glfw/v3.2/glfw"
+	"github.com/JCGrant/twitch-paints/pixels"
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 const (
 	windowWidth  = 1000
 	windowHeight = 1000
 	appName      = "Twitch Paints"
+	fps          = 60
 )
 
-func init() {
-	runtime.LockOSThread()
-}
-
-// Run will instantiate the glfw window and run the glfw loop.
-// This function blocks and MUST be run in the main thread.
-func Run() {
-	if err := glfw.Init(); err != nil {
-		panic(fmt.Errorf("could not initialize glfw: %v", err))
-	}
-	defer glfw.Terminate()
-
-	glfw.WindowHint(glfw.ContextVersionMajor, 4)
-	glfw.WindowHint(glfw.ContextVersionMinor, 1)
-	glfw.WindowHint(glfw.Maximized, glfw.True)
-	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
-	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
-	window, err := glfw.CreateWindow(windowWidth, windowHeight, appName, nil, nil)
-	if err != nil {
-		panic(fmt.Errorf("could not create opengl renderer: %v", err))
-	}
-
-	window.MakeContextCurrent()
-
-	if err := gl.Init(); err != nil {
+// Run will instantiate the SDL2 window and run the rendering loop
+func Run(pixels chan pixels.Pixel) {
+	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
 		panic(err)
 	}
+	defer sdl.Quit()
 
-	version := gl.GoStr(gl.GetString(gl.VERSION))
-	fmt.Println("OpenGL version", version)
+	window, err := sdl.CreateWindow(appName, sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
+		windowWidth, windowHeight, sdl.WINDOW_SHOWN)
+	if err != nil {
+		panic(err)
+	}
+	defer window.Destroy()
 
-	for !window.ShouldClose() {
-		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-		window.SwapBuffers()
-		glfw.PollEvents()
+	surface, err := window.GetSurface()
+	if err != nil {
+		panic(err)
+	}
+	surface.FillRect(nil, 0xffffffff)
+	window.UpdateSurface()
+
+Loop:
+	for {
+		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+			switch event.(type) {
+			case *sdl.QuitEvent:
+				break Loop
+			}
+		}
+
+		select {
+		case p := <-pixels:
+			surface.FillRect(&sdl.Rect{X: p.X, Y: windowHeight - p.Y, W: 1, H: 1}, p.Color)
+			window.UpdateSurface()
+		case <-time.After(time.Duration(1000.0) * time.Millisecond / fps):
+		}
 	}
 }
