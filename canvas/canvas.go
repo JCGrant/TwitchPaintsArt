@@ -46,7 +46,7 @@ Loop:
 
 		select {
 		case p := <-pixels:
-			surface.FillRect(&sdl.Rect{X: p.X, Y: windowHeight - p.Y, W: 1, H: 1}, p.Color)
+			surface.FillRect(&sdl.Rect{X: p.X, Y: windowHeight - p.Y, W: 1, H: 1}, 0xff000000+p.Color)
 			window.UpdateSurface()
 		case <-time.After(time.Duration(1000.0) * time.Millisecond / fps):
 		}
