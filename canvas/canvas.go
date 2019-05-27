@@ -15,7 +15,7 @@ const (
 )
 
 // Run will instantiate the SDL2 window and run the rendering loop
-func Run(pixels chan pixels.Pixel) {
+func Run(pixels chan pixels.Pixel, windowWidth int32, windowHeight int32, initialPixels []pixels.Pixel) {
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
 		panic(err)
 	}
@@ -33,6 +33,9 @@ func Run(pixels chan pixels.Pixel) {
 		panic(err)
 	}
 	surface.FillRect(nil, 0xffffffff)
+	for _, p := range initialPixels {
+		drawPixel(surface, p.X, windowHeight-p.Y, p.Color)
+	}
 	window.UpdateSurface()
 
 Loop:
@@ -46,9 +49,13 @@ Loop:
 
 		select {
 		case p := <-pixels:
-			surface.FillRect(&sdl.Rect{X: p.X, Y: windowHeight - p.Y, W: 1, H: 1}, 0xff000000+p.Color)
+			drawPixel(surface, p.X, windowHeight-p.Y, p.Color)
 			window.UpdateSurface()
 		case <-time.After(time.Duration(1000.0) * time.Millisecond / fps):
 		}
 	}
+}
+
+func drawPixel(surface *sdl.Surface, x int32, y int32, color uint32) {
+	surface.FillRect(&sdl.Rect{X: x, Y: y, W: 1, H: 1}, 0xff000000+color)
 }

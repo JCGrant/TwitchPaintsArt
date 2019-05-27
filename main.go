@@ -3,8 +3,11 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
+	"strconv"
 
 	"github.com/JCGrant/twitch-paints/canvas"
+	"github.com/JCGrant/twitch-paints/database"
 	"github.com/JCGrant/twitch-paints/pixels"
 	"github.com/JCGrant/twitch-paints/twitch"
 )
@@ -20,21 +23,52 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	windowWidth := mustGetIntEnvVar("WIDTH")
+	windowHeight := mustGetIntEnvVar("HEIGHT")
+
 	twitchMessages := make(chan string)
-	pixels := make(chan pixels.Pixel)
+	canvasPixels := make(chan pixels.Pixel)
+	backupPixels := make(chan pixels.Pixel)
+
+	dbPath := "pixels.json"
+	db := database.New(windowWidth, windowHeight)
+	err = db.LoadPixels(dbPath)
+	if err != nil {
+		db.SavePixels(dbPath)
+		err = db.LoadPixels(dbPath)
+		if err != nil {
+			log.Fatalln("loading databse failed: ", err)
+		}
+	}
+
 	go twitch.Run(twitchConfig, twitchMessages)
+
+	// Get twitch message, parse them to pixels, and pass pixels to other channels
 	go func() {
 		for msg := range twitchMessages {
 			log.Println(msg)
 			if p, err := parseMessage(msg); err == nil {
 				log.Println("adding pixel")
-				pixels <- p
+				canvasPixels <- p
+				backupPixels <- p
 			}
 		}
 	}()
-	canvas.Run(pixels)
+
+	go database.Run(backupPixels, dbPath, db)
+
+	canvas.Run(canvasPixels, int32(windowWidth), int32(windowHeight), db.Pixels())
 }
 
 func parseMessage(msg string) (pixels.Pixel, error) {
 	return pixels.FromString(msg)
+}
+
+func mustGetIntEnvVar(name string) int {
+	valueStr := os.Getenv(name)
+	value, err := strconv.Atoi(valueStr)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return value
 }
