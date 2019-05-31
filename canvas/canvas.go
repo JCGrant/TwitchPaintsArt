@@ -1,6 +1,7 @@
 package canvas
 
 import (
+	"runtime"
 	"time"
 
 	"github.com/JCGrant/twitch-paints/pixels"
@@ -15,7 +16,9 @@ const (
 )
 
 // Run will instantiate the SDL2 window and run the rendering loop
+// MUST be run from the main thread
 func Run(pixels chan pixels.Pixel, windowWidth int32, windowHeight int32, initialPixels []pixels.Pixel) {
+	runtime.LockOSThread()
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
 		panic(err)
 	}
