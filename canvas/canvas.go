@@ -1,64 +1,64 @@
 package canvas
 
 import (
-	"runtime"
 	"time"
 
 	"github.com/JCGrant/twitch-paints/pixels"
-	"github.com/veandco/go-sdl2/sdl"
+	"github.com/faiface/pixel"
+	"github.com/faiface/pixel/imdraw"
+	"github.com/faiface/pixel/pixelgl"
+	"golang.org/x/image/colornames"
 )
 
 const (
-	windowWidth  = 1000
-	windowHeight = 1000
-	appName      = "Twitch Paints"
-	fps          = 60
+	appName = "Twitch Paints"
+	fps     = 60
 )
 
-// Run will instantiate the SDL2 window and run the rendering loop
-// MUST be run from the main thread
-func Run(pixels chan pixels.Pixel, windowWidth int32, windowHeight int32, initialPixels []pixels.Pixel) {
-	runtime.LockOSThread()
-	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
-		panic(err)
-	}
-	defer sdl.Quit()
+type canvas struct {
+	pixels        chan pixels.Pixel
+	windowWidth   int
+	windowHeight  int
+	initialPixels []pixels.Pixel
+}
 
-	window, err := sdl.CreateWindow(appName, sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-		windowWidth, windowHeight, sdl.WINDOW_SHOWN)
+func (c canvas) run() {
+	cfg := pixelgl.WindowConfig{
+		Title:  appName,
+		Bounds: pixel.R(0, 0, float64(c.windowWidth), float64(c.windowHeight)),
+		VSync:  true,
+	}
+	win, err := pixelgl.NewWindow(cfg)
 	if err != nil {
 		panic(err)
 	}
-	defer window.Destroy()
 
-	surface, err := window.GetSurface()
-	if err != nil {
-		panic(err)
+	win.Clear(colornames.White)
+	imd := imdraw.New(nil)
+	for _, p := range c.initialPixels {
+		drawPixel(p, win, imd)
 	}
-	surface.FillRect(nil, 0xffffffff)
-	for _, p := range initialPixels {
-		drawPixel(surface, p.X, windowHeight-p.Y, p.Color)
-	}
-	window.UpdateSurface()
+	imd.Draw(win)
 
-Loop:
-	for {
-		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-			switch event.(type) {
-			case *sdl.QuitEvent:
-				break Loop
-			}
-		}
-
+	for !win.Closed() {
 		select {
-		case p := <-pixels:
-			drawPixel(surface, p.X, windowHeight-p.Y, p.Color)
-			window.UpdateSurface()
+		case p := <-c.pixels:
+			drawPixel(p, win, imd)
 		case <-time.After(time.Duration(1000.0) * time.Millisecond / fps):
 		}
+		imd.Draw(win)
+		win.Update()
 	}
 }
 
-func drawPixel(surface *sdl.Surface, x int32, y int32, color uint32) {
-	surface.FillRect(&sdl.Rect{X: x, Y: y, W: 1, H: 1}, 0xff000000+color)
+// Run runs the canvas
+func Run(pixels chan pixels.Pixel, windowWidth int, windowHeight int, initialPixels []pixels.Pixel) {
+	c := canvas{pixels, windowWidth, windowHeight, initialPixels}
+	pixelgl.Run(c.run)
+}
+
+func drawPixel(p pixels.Pixel, win *pixelgl.Window, imd *imdraw.IMDraw) {
+	imd.Color = p.Color
+	imd.Push(pixel.V(float64(p.X), float64(p.Y)), pixel.V(float64(p.X+1), float64(p.Y+1)))
+	imd.Rectangle(0)
 }

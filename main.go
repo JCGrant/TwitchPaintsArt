@@ -34,6 +34,8 @@ func main() {
 	db := database.New(windowWidth, windowHeight)
 	err = db.LoadPixels(dbPath)
 	if err != nil {
+		log.Printf("loading pixels failed: %s\n", err)
+		log.Printf("recreating %s\n", dbPath)
 		db.SavePixels(dbPath)
 		err = db.LoadPixels(dbPath)
 		if err != nil {
@@ -57,7 +59,7 @@ func main() {
 
 	go database.Run(backupPixels, dbPath, db)
 
-	canvas.Run(canvasPixels, int32(windowWidth), int32(windowHeight), db.Pixels())
+	canvas.Run(canvasPixels, windowWidth, windowHeight, db.Pixels())
 }
 
 func parseMessage(msg string) (pixels.Pixel, error) {

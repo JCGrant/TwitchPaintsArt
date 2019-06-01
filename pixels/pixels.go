@@ -2,15 +2,16 @@ package pixels
 
 import (
 	"fmt"
+	"image/color"
 	"regexp"
 	"strconv"
 )
 
 // Pixel represents a single pixel on a screen
 type Pixel struct {
-	X     int32
-	Y     int32
-	Color uint32
+	X     int
+	Y     int
+	Color color.RGBA
 }
 
 var r = regexp.MustCompile(`(\d+)\s*(\d+)\s*(\w+)`)
@@ -181,9 +182,12 @@ func FromString(s string) (Pixel, error) {
 	if err != nil {
 		return Pixel{}, err
 	}
-	color, exists := colors[colorStr]
+	c, exists := colors[colorStr]
 	if !exists {
 		return Pixel{}, fmt.Errorf("not a valid color")
 	}
-	return Pixel{int32(x), int32(y), color}, nil
+	r := uint8(c / (256 * 256))
+	g := uint8((c / 256) % 256)
+	b := uint8(c % 256)
+	return Pixel{x, y, color.RGBA{r, g, b, 255}}, nil
 }
