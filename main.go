@@ -49,7 +49,7 @@ func main() {
 	go func() {
 		for msg := range twitchMessages {
 			log.Println(msg)
-			if p, err := parseMessage(msg); err == nil {
+			if p, err := parseMessage(msg); err == nil && isValidPixel(p, windowWidth, windowHeight) {
 				log.Println("adding pixel")
 				canvasPixels <- p
 				backupPixels <- p
@@ -64,6 +64,10 @@ func main() {
 
 func parseMessage(msg string) (pixels.Pixel, error) {
 	return pixels.FromString(msg)
+}
+
+func isValidPixel(p pixels.Pixel, windowWidth, windowHeight int) bool {
+	return p.X >= 0 && p.X < windowWidth && p.Y >= 0 && p.Y < windowHeight
 }
 
 func mustGetIntEnvVar(name string) int {
