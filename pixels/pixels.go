@@ -14,7 +14,8 @@ type Pixel struct {
 	Color color.RGBA
 }
 
-var r = regexp.MustCompile(`(\d+)\s*(\d+)\s*(\w+)`)
+var pixelRegex = regexp.MustCompile(`(\d+)\s*(\d+)\s*(.+)`)
+var colorRegex = regexp.MustCompile(`#([a-zA-Z0-9]{6})`)
 
 // https://www.w3.org/TR/css-color-3/#svg-color
 var colors = map[string]uint32{
@@ -169,9 +170,9 @@ var colors = map[string]uint32{
 
 // FromString parses a string and returns a Pixel
 func FromString(s string) (Pixel, error) {
-	subMatches := r.FindStringSubmatch(s)
+	subMatches := pixelRegex.FindStringSubmatch(s)
 	if len(subMatches) != 4 {
-		return Pixel{}, fmt.Errorf("did not match pattern")
+		return Pixel{}, fmt.Errorf("did not match pixel regex")
 	}
 	xStr, yStr, colorStr := subMatches[1], subMatches[2], subMatches[3]
 	x, err := strconv.Atoi(xStr)
@@ -182,12 +183,36 @@ func FromString(s string) (Pixel, error) {
 	if err != nil {
 		return Pixel{}, err
 	}
-	c, exists := colors[colorStr]
-	if !exists {
-		return Pixel{}, fmt.Errorf("not a valid color")
+	color, err := parseColorStr(colorStr)
+	if err != nil {
+		return Pixel{}, err
 	}
-	r := uint8(c / (256 * 256))
-	g := uint8((c / 256) % 256)
-	b := uint8(c % 256)
-	return Pixel{x, y, color.RGBA{r, g, b, 255}}, nil
+	return Pixel{x, y, color}, nil
+}
+
+func parseColorStr(colorStr string) (rgba color.RGBA, err error) {
+	colorInt, exists := colors[colorStr]
+	if exists {
+		return parseColorInt(colorInt), nil
+	}
+
+	subMatches := colorRegex.FindStringSubmatch(colorStr)
+	if len(subMatches) != 2 {
+		return color.RGBA{}, fmt.Errorf("did not match color regex")
+	}
+	colorHexStr := fmt.Sprintf("0x%s", subMatches[1])
+	colorInt64, err := strconv.ParseInt(colorHexStr, 0, 64)
+	if err != nil {
+		return color.RGBA{}, fmt.Errorf("invalid color hex string")
+	}
+	colorInt = uint32(colorInt64)
+
+	return parseColorInt(colorInt), nil
+}
+
+func parseColorInt(colorInt uint32) color.RGBA {
+	r := uint8(colorInt / (256 * 256))
+	g := uint8((colorInt / 256) % 256)
+	b := uint8(colorInt % 256)
+	return color.RGBA{r, g, b, 255}
 }
