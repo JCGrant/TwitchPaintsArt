@@ -15,6 +15,8 @@ var imagePath = flag.String("i", "img.png", "path to image")
 var leftOffset = flag.Int("left", 0, "how far from left")
 var bottomOffset = flag.Int("bottom", 0, "how far from bottom")
 var startPixelIndex = flag.Int("start", 0, "at what pixel to start painting")
+var delay = flag.Int("delay", 2500, "the amount of delay between sending Twitch commands")
+var dryRun = flag.Bool("dry", false, "will run the painter, but will not send to Twitch")
 
 func main() {
 	flag.Parse()
@@ -29,13 +31,15 @@ func main() {
 	twitchCommands := make(chan string)
 	go twitch.Run(twitchConfig, twitchCommands, nil)
 	for i := *startPixelIndex; i < len(imagePixels); i++ {
-		time.Sleep(2500 * time.Millisecond)
+		time.Sleep(time.Duration(*delay) * time.Millisecond)
 		p := imagePixels[i]
 		p.X += *leftOffset
 		// Vertical coords of canvas are flipped, so must flip image pixels
 		p.Y = *bottomOffset + imageHeight - 1 - p.Y
 		fmt.Printf("%d %#v\n", i, p)
-		twitchCommands <- pixelToCommand(p)
+		if !*dryRun {
+			twitchCommands <- pixelToCommand(p)
+		}
 	}
 }
 
