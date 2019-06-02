@@ -35,18 +35,24 @@ func ReadConfig(path string) (Config, error) {
 }
 
 // Run starts an IRC client connected to a Twitch channel.
+// Will output messages from the Twitch channel on to the out chan.
+// Will send messages from the in chan to the Twitch channel.
 // This function blocks.
-func Run(config Config, messages chan string) {
+func Run(config Config, in chan string, out chan string) {
 	irccon := irc.IRC(config.Nick, config.Nick)
 	irccon.Password = config.Pass
 	irccon.AddCallback("001", func(e *irc.Event) { irccon.Join(config.Channel) })
 	irccon.AddCallback("PRIVMSG", func(e *irc.Event) {
-		msg := e.Message()
-		messages <- msg
+		out <- e.Message()
 	})
 	err := irccon.Connect(twitchIRC)
 	if err != nil {
 		log.Fatalln(err)
 	}
+	go func() {
+		for msg := range in {
+			irccon.Privmsg(config.Channel, msg)
+		}
+	}()
 	irccon.Loop()
 }

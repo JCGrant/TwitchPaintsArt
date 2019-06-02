@@ -2,7 +2,10 @@ package pixels
 
 import (
 	"fmt"
+	"image"
 	"image/color"
+	"image/png"
+	"os"
 	"regexp"
 	"strconv"
 )
@@ -215,4 +218,40 @@ func parseColorInt(colorInt uint32) color.RGBA {
 	g := uint8((colorInt / 256) % 256)
 	b := uint8(colorInt % 256)
 	return color.RGBA{r, g, b, 255}
+}
+
+// ImageFilePixels loads an image and returns a list of it's Pixels
+func ImageFilePixels(path string) ([]Pixel, int, int, error) {
+	image.RegisterFormat("png", "png", png.Decode, png.DecodeConfig)
+	imgfile, err := os.Open(path)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	defer imgfile.Close()
+
+	img, _, err := image.Decode(imgfile)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("decoding image failed: %s", err)
+	}
+
+	height := img.Bounds().Max.Y
+	width := img.Bounds().Max.X
+
+	ps := make([]Pixel, 0)
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			r, g, b, a := img.At(x, y).RGBA()
+			ps = append(ps, Pixel{
+				X: x,
+				Y: y,
+				Color: color.RGBA{
+					uint8(r / 257),
+					uint8(g / 257),
+					uint8(b / 257),
+					uint8(a / 257),
+				},
+			})
+		}
+	}
+	return ps, width, height, nil
 }

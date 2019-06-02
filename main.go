@@ -43,7 +43,7 @@ func main() {
 		}
 	}
 
-	go twitch.Run(twitchConfig, twitchMessages)
+	go twitch.Run(twitchConfig, nil, twitchMessages)
 
 	// Get twitch message, parse them to pixels, and pass pixels to other channels
 	go func() {
