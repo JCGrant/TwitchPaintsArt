@@ -76,7 +76,7 @@ func (db *DB) SavePixels(path string) error {
 
 // Run starts the DB, listening for any new pixels to store
 func Run(pixels chan pixels.Pixel, savePath string, db *DB) error {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(30 * time.Minute)
 	for {
 		select {
 		case p := <-pixels:
@@ -84,7 +84,6 @@ func Run(pixels chan pixels.Pixel, savePath string, db *DB) error {
 		case <-ticker.C:
 			log.Println("saving...")
 			db.SavePixels(savePath)
-			log.Println("saved!")
 		}
 	}
 }
