@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -26,7 +27,7 @@ func main() {
 	windowWidth := mustGetIntEnvVar("WIDTH")
 	windowHeight := mustGetIntEnvVar("HEIGHT")
 
-	twitchMessages := make(chan string)
+	twitchMessages := make(chan twitch.Message)
 	canvasPixels := make(chan pixels.Pixel)
 	backupPixels := make(chan pixels.Pixel)
 
@@ -48,9 +49,8 @@ func main() {
 	// Get twitch message, parse them to pixels, and pass pixels to other channels
 	go func() {
 		for msg := range twitchMessages {
-			log.Println(msg)
-			if p, err := parseMessage(msg); err == nil && isValidPixel(p, windowWidth, windowHeight) {
-				log.Println("adding pixel")
+			if p, err := parseMessage(msg.Text); err == nil && isValidPixel(p, windowWidth, windowHeight) {
+				log.Println(fmt.Sprintf("%s: %s", msg.Nickname, msg.Text))
 				canvasPixels <- p
 				backupPixels <- p
 			}

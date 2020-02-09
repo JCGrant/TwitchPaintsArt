@@ -19,6 +19,13 @@ type Config struct {
 	Channel string `json:"channel"`
 }
 
+// Messages sent to and from the IRC server
+type Message struct {
+	Nickname string
+	Text string
+	Channel string
+}
+
 // ReadConfig will create a Config from a path to a config.json
 func ReadConfig(path string) (Config, error) {
 	file, err := os.Open(path)
@@ -38,12 +45,17 @@ func ReadConfig(path string) (Config, error) {
 // Will output messages from the Twitch channel on to the out chan.
 // Will send messages from the in chan to the Twitch channel.
 // This function blocks.
-func Run(config Config, in chan string, out chan string) {
+func Run(config Config, in chan string, out chan Message) {
 	irccon := irc.IRC(config.Nick, config.Nick)
 	irccon.Password = config.Pass
 	irccon.AddCallback("001", func(e *irc.Event) { irccon.Join(config.Channel) })
 	irccon.AddCallback("PRIVMSG", func(e *irc.Event) {
-		out <- e.Message()
+		message := Message{
+			Nickname: e.Nick,
+			Text: e.Message(),
+			Channel: e.Arguments[0],
+		}
+		out <- message
 	})
 	err := irccon.Connect(twitchIRC)
 	if err != nil {
