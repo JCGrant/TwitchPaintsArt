@@ -13,6 +13,7 @@ import (
 const (
 	appName = "Twitch Paints"
 	fps     = 60
+	scale   = 8
 )
 
 type canvas struct {
@@ -59,6 +60,6 @@ func Run(pixels chan pixels.Pixel, windowWidth int, windowHeight int, initialPix
 
 func drawPixel(p pixels.Pixel, win *pixelgl.Window, imd *imdraw.IMDraw) {
 	imd.Color = p.Color
-	imd.Push(pixel.V(float64(p.X), float64(p.Y)), pixel.V(float64(p.X+1), float64(p.Y+1)))
+	imd.Push(pixel.V(float64(p.X * scale), float64(p.Y * scale)), pixel.V(float64((p.X+1) * scale), float64((p.Y+1) * scale)))
 	imd.Rectangle(0)
 }
